@@ -1,0 +1,120 @@
+package com.crm.backend.controller;//package com.crm.backend.controller;
+//
+//import com.crm.backend.dto.LoginRequest;
+//import com.crm.backend.dto.LoginResponse;
+//import com.crm.backend.config.jwt.JwtUtils;
+//import org.springframework.beans.factory.annotation.Autowired;
+//import org.springframework.http.HttpStatus;
+//import org.springframework.http.ResponseEntity;
+//import org.springframework.security.access.prepost.PreAuthorize;
+//import org.springframework.security.authentication.AuthenticationManager;
+//import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+//import org.springframework.security.core.Authentication;
+//import org.springframework.security.core.AuthenticationException;
+//import org.springframework.security.core.context.SecurityContextHolder;
+//import org.springframework.security.core.userdetails.UserDetails;
+//import org.springframework.web.bind.annotation.GetMapping;
+//import org.springframework.web.bind.annotation.PostMapping;
+//import org.springframework.web.bind.annotation.RequestBody;
+//import org.springframework.web.bind.annotation.RestController;
+//
+//import java.util.HashMap;
+//import java.util.List;
+//import java.util.Map;
+//import java.util.stream.Collectors;
+//
+//@RestController
+//public class AuthenticationController {
+//
+//    @Autowired
+//    private JwtUtils jwtUtils;
+//
+//    @Autowired
+//    private AuthenticationManager authenticationManager;
+//
+//
+//    @PostMapping("/login")
+//    public ResponseEntity<?> authenticateUser(@RequestBody LoginRequest loginRequest) {
+//        Authentication authentication;
+//        System.out.println(loginRequest.getEmail());
+//        try {
+//            authentication = authenticationManager
+//                    .authenticate(new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword()));
+//        } catch (AuthenticationException exception) {
+//            Map<String, Object> map = new HashMap<>();
+//            map.put("message", "Bad credentials");
+//            map.put("status", false);
+//            return new ResponseEntity<Object>(map, HttpStatus.UNAUTHORIZED);
+//        }
+//
+//        SecurityContextHolder.getContext().setAuthentication(authentication);
+//
+//        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+//
+//        String jwtToken = jwtUtils.generateTokenFromUsername(userDetails);
+//
+//        List<String> roles = userDetails.getAuthorities().stream()
+//                .map(item -> item.getAuthority())
+//                .collect(Collectors.toList());
+//
+//        LoginResponse response = new LoginResponse(userDetails.getUsername(), roles, jwtToken);
+//
+//        return ResponseEntity.ok(response);
+//    }
+//}
+
+
+import com.crm.backend.dto.LoginRequest;
+import com.crm.backend.services.JwtService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/auth")
+public class AuthenticationController {
+
+    @Autowired
+    private UserInfoService service;
+
+    @Autowired
+    private JwtService jwtService;
+
+    @Autowired
+    private AuthenticationManager authenticationManager;
+
+    @GetMapping("/welcome")
+    public String welcome() {
+        return "Welcome this endpoint is not secure";
+    }
+
+
+
+    @GetMapping("/user/userProfile")
+    @PreAuthorize("hasAuthority('ROLE_USER')")
+    public String userProfile() {
+        return "Welcome to User Profile";
+    }
+
+    @GetMapping("/admin/adminProfile")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    public String adminProfile() {
+        return "Welcome to Admin Profile";
+    }
+
+    @PostMapping("/generateToken")
+    public String authenticateAndGetToken(@RequestBody LoginRequest authRequest) {
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(authRequest.getEmail(), authRequest.getPassword())
+        );
+        if (authentication.isAuthenticated()) {
+            return jwtService.generateToken(authRequest.getEmail());
+        } else {
+            throw new UsernameNotFoundException("Invalid user request!");
+        }
+    }
+}
